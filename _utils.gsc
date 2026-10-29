@@ -14,8 +14,6 @@
 #include maps\mp\zombies\_zm_weapons;
 #include maps\mp\zombies\_zm_pers_upgrades_functions;
 
-// THIS IS BUILT FOR FIRST ROOM GAME SUBMITS (works on client and servers)
-
 init_dvars() {
   set_dvar_default("sv_cheats", 0);
   set_dvar_default("refill_player_banks", 1);
