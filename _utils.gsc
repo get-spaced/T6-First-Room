@@ -252,7 +252,7 @@ print_checksums() {
 
 is_vanilla() {
   validMaps = array("zm_transit", "zm_nuked", "zm_highrise", "zm_prison", "zm_buried", "zm_tomb");
-  currentMap = level.script;
+  currentMap = get_current_map();
 
   return is_in_array(validMaps, currentMap);
 }
