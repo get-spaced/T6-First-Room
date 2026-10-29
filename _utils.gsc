@@ -809,3 +809,166 @@ fr_restart_remove_hud() {
     self.fr_restart_footer = undefined;
   }
 }
+
+
+init_powerup_monitor() {
+  if (isdefined(level.pm_initialized))
+    return;
+
+  level.pm_initialized = true;
+  level.pm_last_drop_count = 0;
+
+  level thread pm_reset_round();
+  level thread pm_monitor_drops();
+}
+
+pm_reset_round() {
+  level endon("end_game");
+
+  for (;;) {
+    level waittill("start_of_round");
+    level.pm_last_drop_count = 0;
+  }
+}
+
+pm_monitor_drops() {
+  level endon("end_game");
+
+  flag_wait("initial_blackscreen_passed");
+
+  for (;;) {
+    level waittill("powerup_dropped", powerup);
+
+    if (!isdefined(level.powerup_drop_count))
+      continue;
+
+    count = level.powerup_drop_count;
+
+    if (count <= level.pm_last_drop_count)
+      continue;
+
+    level.pm_last_drop_count = count;
+
+    if (!isdefined(powerup) || !isdefined(powerup.powerup_name))
+      continue;
+
+    powerup thread pm_monitor_pickup(powerup.powerup_name);
+  }
+}
+
+pm_monitor_pickup(powerup_name) {
+  level endon("end_game");
+
+  for (;;) {
+    if (!isdefined(self))
+      return;
+
+    if (isdefined(self.claimed) && self.claimed) {
+      pm_print_pickup(powerup_name);
+      return;
+    }
+
+    wait 0.05;
+  }
+}
+
+pm_print_pickup(powerup_name) {
+  max_drops = 4;
+
+  if (isdefined(level.zombie_vars["zombie_powerup_drop_max_per_round"]))
+    max_drops = level.zombie_vars["zombie_powerup_drop_max_per_round"];
+
+  dropped = level.powerup_drop_count;
+  remaining = max_drops - dropped;
+
+  if (remaining < 0)
+    remaining = 0;
+
+  name = pm_powerup_name(powerup_name);
+  cycle = pm_remaining_cycle();
+
+  foreach (player in get_players()) {
+    if (!isdefined(player) || !isplayer(player))
+      continue;
+
+    player queue_print_client("^2[POWERUP]^7: " + name + " ^3-^7 Drops left: ^2" + remaining + "/" + max_drops);
+    player queue_print_client("^5[CYCLE]^7: " + cycle);
+  }
+}
+
+pm_remaining_cycle() {
+  if (!isdefined(level.zombie_powerup_array))
+    return "Unavailable";
+
+  if (!isdefined(level.zombie_powerup_index))
+    return "Unavailable";
+
+  remaining = "";
+  pool = level.zombie_powerup_array;
+
+  for (i = level.zombie_powerup_index; i < pool.size; i++) {
+    powerup = pool[i];
+
+    if (!isdefined(level.zombie_powerups[powerup]))
+      continue;
+
+    info = level.zombie_powerups[powerup];
+
+    if (!isdefined(info.func_should_drop_with_regular_powerups))
+      continue;
+
+    if (![[ info.func_should_drop_with_regular_powerups ]]())
+      continue;
+
+    if (remaining != "")
+      remaining += ", ";
+
+    remaining += pm_powerup_name(powerup);
+  }
+
+  if (remaining == "")
+    return "No eligible powerups left in cycle";
+
+  return remaining;
+}
+
+pm_powerup_name(powerup) {
+  switch (powerup) {
+    case "nuke":
+      return "Nuke";
+
+    case "insta_kill":
+      return "Insta-Kill";
+
+    case "full_ammo":
+      return "Max Ammo";
+
+    case "double_points":
+      return "Double Points";
+
+    case "carpenter":
+      return "Carpenter";
+
+    case "fire_sale":
+      return "Fire Sale";
+
+    case "bonfire_sale":
+      return "Bonfire Sale";
+
+    case "minigun":
+      return "Death Machine";
+
+    case "free_perk":
+      return "Free Perk";
+
+    case "zombie_blood":
+      return "Zombie Blood";
+
+    case "bonus_points_team":
+    case "bonus_points_player":
+      return "Bonus Points";
+
+    default:
+      return powerup;
+  }
+}

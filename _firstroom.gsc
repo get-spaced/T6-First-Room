@@ -20,9 +20,11 @@ init() {
   level thread remove_all_door_buys();
   level thread remove_mystery_box();
   level thread print_checksums();
+  
   level thread init_violation_monitor();
   level thread init_timers();
   level thread init_endgame_restart();
+  level thread init_powerup_monitor();
 
   if (get_current_map() == "zm_nuked") {
     y = array((1058.2, 387.3, -57), (609.28, 315.9, -53.89), (872.48, 461.88, -56.8), (851.1, 156.6, -51), (808, 140.5, -51), (602.53, 281.09, -55));
