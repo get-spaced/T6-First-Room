@@ -1387,3 +1387,23 @@ is_pers_active() {
 is_pers_disabled() {
   return false;
 }
+
+setup_first_room_powerups() {
+  level endon("end_game");
+
+  while (!isdefined(level.zombie_powerup_array) || !isdefined(level.zombie_powerups))
+    wait 0.05;
+
+  wait 0.05;
+  remove_first_room_powerups();
+}
+
+remove_first_room_powerups() {
+  if (!isdefined(level.zombie_powerup_array))
+    return;
+
+  arrayremovevalue(level.zombie_powerup_array, "carpenter");
+  arrayremovevalue(level.zombie_powerup_array, "zombie_blood");
+  arrayremovevalue(level.zombie_powerup_array, "firesale");
+  arrayremovevalue(level.zombie_powerup_array, "fire_sale");
+}

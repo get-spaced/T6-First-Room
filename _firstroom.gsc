@@ -27,6 +27,7 @@ init() {
   level thread print_checksums();
   level thread track_zombie_counter_rounds();
   level thread remove_buildables();
+  level thread setup_first_room_powerups();
   
   level thread init_violation_monitor();
   level thread init_timers();
