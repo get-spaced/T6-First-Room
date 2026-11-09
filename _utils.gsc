@@ -406,7 +406,7 @@ set_value_text(value) {
   if (isdefined(self.text) && self.text == text)
     return;
 
-  self settextunlimitedun(text);
+  self settextunlimited(text);
   self.text = text;
 }
 
