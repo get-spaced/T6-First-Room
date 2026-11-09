@@ -33,7 +33,7 @@ init_dvars() {
   set_dvar_default("scr_skip_devblock",              "1");
   set_dvar_default("g_zm_fix_damage_overflow",       "1");
   set_dvar_default("g_fix_entity_leaks",             "0");
-  set_dvar_default("cg_flashScriptHashes",           "1");
+  // set_dvar_default("cg_flashScriptHashes",           "1");
   set_dvar_default("cg_debugInfoCornerOffset",       "-20 15");
   set_dvar_default("cg_drawIdentifier",              "1");
   set_dvar_default("sv_clientFpsLimit",              "250");
