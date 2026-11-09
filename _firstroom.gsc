@@ -49,8 +49,28 @@ on_player_connected() {
   self thread record_fill_bank();
   self thread mule_kick_weapon_hud();
   self thread verify_network_frames();
+  self thread give_weapon_on_spawn();
 }
 
+give_weapon_on_spawn() {
+  self endon("disconnect");
+
+  for (;;) {
+    self waittill_any("played_spawned", "spawned_player");
+    wait 1;
+
+    weapon = get_map_weapon();
+    self giveweapon(weapon);
+    self switchtoweapon(weapon);
+
+    if (self.score < 2500)
+      self.score = 2500;
+  }
+}
+
+get_map_weapon() {
+  return "m14_zm";
+}
 
 verify_network_frames() {
   self notify("stop_network_verification");
