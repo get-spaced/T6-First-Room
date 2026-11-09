@@ -55,17 +55,23 @@ on_player_connected() {
 give_weapon_on_spawn() {
   self endon("disconnect");
 
+  self give_weapons();
+
   for (;;) {
     self waittill_any("played_spawned", "spawned_player");
-    wait 1;
 
-    weapon = get_map_weapon();
-    self giveweapon(weapon);
-    self switchtoweapon(weapon);
-
-    if (self.score < 2500)
-      self.score = 2500;
+    self give_weapons();
   }
+}
+
+give_weapons() {
+  weapon = get_map_weapon();
+  
+  self giveweapon(weapon);
+  self switchtoweapon(weapon);
+
+  if (self.score < 2500 && level.round_number >= 10)
+    self.score = 2500;
 }
 
 get_map_weapon() {

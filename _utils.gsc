@@ -43,6 +43,11 @@ init_dvars() {
 init_values() {
   level.solo_framework = 100;
   level.coop_framework = 50;
+
+  // level.round_number = 10;
+  // level.zombie_vars["zombie_spawn_delay"] = 1.2605;
+  // level.zombie_move_speed = 105;
+  // level.first_round = false;
 }
 
 safe_replacefunc(path, name, replacement) {
@@ -735,7 +740,7 @@ fr_restart_create_hud() {
 
   self.fr_restart_header = self fr_restart_text(42, 1.15, (0.55, 0.8, 0.8));
   self.fr_restart_title = self fr_restart_text(70, 2.5, (1, 1, 1));
-  self.fr_restart_hint = self fr_restart_text(108, 2, (0.35, 1, 0.75));
+  self.fr_restart_hint = self fr_restart_text(108, 2, (1, 1, 1));
   self.fr_restart_footer = self fr_restart_text(140, 1.15, (0.75, 0.8, 0.85));
 }
 
