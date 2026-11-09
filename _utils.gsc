@@ -1168,6 +1168,7 @@ get_zombie_counter_data() {
   data.queued = 0;
   data.total = 0;
   data.hordes = 0;
+  data.horde_extra = false;
 
   enemies = get_round_enemy_array();
 
@@ -1198,16 +1199,17 @@ get_zombie_counter_data() {
   round_type = get_counter_round_type(data.counts);
 
   data.counts[round_type] += data.queued;
-
   data.total = data.active + data.queued;
 
-  horde_size = getdvarint("counter_horde_size");
+  data.horde_size = getdvarint("counter_horde_size");
 
-  if (horde_size < 1)
-    horde_size = 24;
+  if (data.horde_size < 1)
+    data.horde_size = 24;
 
-  if (data.total > 24)
-    data.hordes = int((data.total + horde_size - 1) / horde_size);
+  if (data.total > data.horde_size) {
+    data.hordes = int(data.total / data.horde_size);
+    data.horde_extra = data.total > (data.hordes * data.horde_size);
+  }
 
   return data;
 }
@@ -1237,8 +1239,14 @@ build_zombie_counter_text(data) {
   if (text == "")
     text = "^7Zombies: ^10";
 
-  if (data.total > 24)
-    text += " ^7(Hordes: ^1" + data.hordes + "^7)";
+  if (data.total > data.horde_size) {
+    suffix = "";
+
+    if (data.horde_extra)
+      suffix = "+";
+
+    text += " ^7(Hordes: ^1" + data.hordes + suffix + "^7)";
+  }
 
   return text;
 }
