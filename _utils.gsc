@@ -19,7 +19,8 @@ init_dvars() {
   set_dvar_default("refill_player_banks", 1);
 
   set_dvar_default("scr_allowFileIo", "1");
-  set_dvar_default("version", "1.0");
+  set_dvar_default("version", "1.3");
+  set_dvar_default("custom_map", "");
 
   set_dvar_default("player_strafeSpeedScale",        "0.8");
   set_dvar_default("player_backSpeedScale",          "0.7");
@@ -54,6 +55,7 @@ init_values() {
   level.coop_framework = 50;
   level.counter_round_active = false;
   level.counter_round_started = false;
+  level.is_custom_map = false;
 
   // level.round_number = 10;
   // level.zombie_vars["zombie_spawn_delay"] = 1.2605;
@@ -826,168 +828,85 @@ fr_restart_remove_hud() {
   }
 }
 
+init_drop_cycle() {
+  level.drop_cycle_names = array("nuke", "double_points", "insta_kill", "full_ammo");
+  level.drop_cycle_labels = array("Nuke", "Double Points", "Insta Kill", "Max Ammo");
+  level.drop_cycle_seen = [];
 
-init_powerup_monitor() {
-  if (isdefined(level.pm_initialized))
-    return;
-
-  level.pm_initialized = true;
-  level.pm_last_drop_count = 0;
-
-  level thread pm_reset_round();
-  level thread pm_monitor_drops();
+  level thread setup_first_room_powerups();
+  level thread drop_cycle_listener();
 }
 
-pm_reset_round() {
+drop_cycle_listener() {
   level endon("end_game");
-
-  for (;;) {
-    level waittill("start_of_round");
-    level.pm_last_drop_count = 0;
-  }
-}
-
-pm_monitor_drops() {
-  level endon("end_game");
-
-  flag_wait("initial_blackscreen_passed");
 
   for (;;) {
     level waittill("powerup_dropped", powerup);
 
-    if (!isdefined(level.powerup_drop_count))
+    if (!isdefined(powerup))
       continue;
 
-    count = level.powerup_drop_count;
-
-    if (count <= level.pm_last_drop_count)
-      continue;
-
-    level.pm_last_drop_count = count;
+    if (!isdefined(powerup.powerup_name))
+      wait 0.05;
 
     if (!isdefined(powerup) || !isdefined(powerup.powerup_name))
       continue;
 
-    powerup thread pm_monitor_pickup(powerup.powerup_name);
+    name = powerup.powerup_name;
+    index = array_index_of(level.drop_cycle_names, name);
+
+    if (index < 0 || array_contains(level.drop_cycle_seen, name))
+      continue;
+
+    level.drop_cycle_seen[level.drop_cycle_seen.size] = name;
+
+    if (level.drop_cycle_seen.size >= level.drop_cycle_names.size) {
+      wait 0.05;
+      level.drop_cycle_seen = [];
+
+      players = getplayers();
+      for (i = 0; i < players.size; i++)
+        players[i] queue_print_client("^2Drop cycle reset!");
+    }
   }
 }
 
-pm_monitor_pickup(powerup_name) {
+get_drop_cycle_remaining_text() {
+  text = "";
+
+  for (i = 0; i < level.drop_cycle_names.size; i++) {
+    if (array_contains(level.drop_cycle_seen, level.drop_cycle_names[i]))
+      continue;
+
+    if (text != "")
+      text += "^8, ^7";
+
+    text += level.drop_cycle_labels[i];
+  }
+
+  return text == "" ? "None" : text;
+}
+
+setup_first_room_powerups() {
   level endon("end_game");
 
-  for (;;) {
-    if (!isdefined(self))
-      return;
-
-    if (isdefined(self.claimed) && self.claimed) {
-      pm_print_pickup(powerup_name);
-      return;
-    }
-
+  while (!isdefined(level.zombie_powerup_array) || !isdefined(level.zombie_powerups))
     wait 0.05;
-  }
+
+  wait 0.05;
+  remove_first_room_powerups();
 }
 
-pm_print_pickup(powerup_name) {
-  max_drops = 4;
-
-  if (isdefined(level.zombie_vars["zombie_powerup_drop_max_per_round"]))
-    max_drops = level.zombie_vars["zombie_powerup_drop_max_per_round"];
-
-  dropped = level.powerup_drop_count;
-  remaining = max_drops - dropped;
-
-  if (remaining < 0)
-    remaining = 0;
-
-  name = pm_powerup_name(powerup_name);
-  cycle = pm_remaining_cycle();
-
-  foreach (player in get_players()) {
-    if (!isdefined(player) || !isplayer(player))
-      continue;
-
-    player queue_print_client("^2[POWERUP]^7: " + name + " ^3-^7 Drops left: ^2" + remaining + "/" + max_drops);
-    player queue_print_client("^5[CYCLE]^7: " + cycle);
-  }
-}
-
-pm_remaining_cycle() {
+remove_first_room_powerups() {
   if (!isdefined(level.zombie_powerup_array))
-    return "Unavailable";
+    return;
 
-  if (!isdefined(level.zombie_powerup_index))
-    return "Unavailable";
-
-  remaining = "";
-  pool = level.zombie_powerup_array;
-
-  for (i = level.zombie_powerup_index; i < pool.size; i++) {
-    powerup = pool[i];
-
-    if (!isdefined(level.zombie_powerups[powerup]))
-      continue;
-
-    info = level.zombie_powerups[powerup];
-
-    if (!isdefined(info.func_should_drop_with_regular_powerups))
-      continue;
-
-    if (![[ info.func_should_drop_with_regular_powerups ]]())
-      continue;
-
-    if (remaining != "")
-      remaining += ", ";
-
-    remaining += pm_powerup_name(powerup);
-  }
-
-  if (remaining == "")
-    return "No eligible powerups left in cycle";
-
-  return remaining;
+  arrayremovevalue(level.zombie_powerup_array, "carpenter");
+  arrayremovevalue(level.zombie_powerup_array, "zombie_blood");
+  arrayremovevalue(level.zombie_powerup_array, "firesale");
+  arrayremovevalue(level.zombie_powerup_array, "fire_sale");
 }
 
-pm_powerup_name(powerup) {
-  switch (powerup) {
-    case "nuke":
-      return "Nuke";
-
-    case "insta_kill":
-      return "Insta-Kill";
-
-    case "full_ammo":
-      return "Max Ammo";
-
-    case "double_points":
-      return "Double Points";
-
-    case "carpenter":
-      return "Carpenter";
-
-    case "fire_sale":
-      return "Fire Sale";
-
-    case "bonfire_sale":
-      return "Bonfire Sale";
-
-    case "minigun":
-      return "Death Machine";
-
-    case "free_perk":
-      return "Free Perk";
-
-    case "zombie_blood":
-      return "Zombie Blood";
-
-    case "bonus_points_team":
-    case "bonus_points_player":
-      return "Bonus Points";
-
-    default:
-      return powerup;
-  }
-}
 
 get_counter_font_scale() {
   scale = getdvarfloat("counter_font_scale");
@@ -1396,22 +1315,102 @@ is_pers_disabled() {
   return false;
 }
 
-setup_first_room_powerups() {
-  level endon("end_game");
-
-  while (!isdefined(level.zombie_powerup_array) || !isdefined(level.zombie_powerups))
-    wait 0.05;
-
-  wait 0.05;
-  remove_first_room_powerups();
+is_custom_map() {
+  return is_true(level.is_custom_map);
 }
 
-remove_first_room_powerups() {
-  if (!isdefined(level.zombie_powerup_array))
-    return;
+get_custom_map() {
+  return getdvar("custom_map");
+}
 
-  arrayremovevalue(level.zombie_powerup_array, "carpenter");
-  arrayremovevalue(level.zombie_powerup_array, "zombie_blood");
-  arrayremovevalue(level.zombie_powerup_array, "firesale");
-  arrayremovevalue(level.zombie_powerup_array, "fire_sale");
+format_map(map_name) {
+  custom_map = get_custom_map();
+
+  if (is_custom_map() && custom_map != "")
+    return custom_map;
+
+  if (!isdefined(map_name) || map_name == "")
+    return "Unknown Map";
+
+  map_name = tolower(map_name);
+
+  switch (map_name) {
+    case "zm_transit":
+      mode = tolower(getdvar("g_gametype"));
+      location = tolower(getdvar("ui_zm_mapstartlocation"));
+
+      if (mode == "zclassic")
+        return "TranZit";
+
+      switch (location) {
+        case "transit":
+          return "Bus Depot";
+
+        case "town":
+          return "Town";
+
+        case "farm":
+          return "Farm";
+
+        case "diner":
+          return "Diner";
+
+        case "power":
+          return "Power Station";
+
+        case "cornfield":
+          return "Cornfield";
+
+        case "tunnel":
+          return "Tunnel";
+
+        default:
+          return "TranZit";
+      }
+
+    case "zm_transit_dr":
+      return "Diner";
+
+    case "zm_nuked":
+      return "Nuketown Zombies";
+
+    case "zm_highrise":
+      return "Die Rise";
+
+    case "zm_prison":
+      return "Mob of the Dead";
+
+    case "zm_buried":
+      return "Buried";
+
+    case "zm_tomb":
+      return "Origins";
+
+    default:
+      return map_name;
+  }
+}
+
+array_contains(values, value) {
+  if (!isdefined(values))
+    return false;
+
+  for (i = 0; i < values.size; i++) {
+    if (values[i] == value)
+      return true;
+  }
+
+  return false;
+}
+
+array_index_of(values, value) {
+  if (!isdefined(values))
+    return -1;
+
+  for (i = 0; i < values.size; i++) {
+    if (values[i] == value)
+      return i;
+  }
+
+  return -1;
 }

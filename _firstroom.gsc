@@ -19,6 +19,7 @@ main() {
 
   init_dvars();
   init_values();
+  init_drop_cycle();
 }
 
 init() {
@@ -27,12 +28,10 @@ init() {
   level thread print_checksums();
   level thread track_zombie_counter_rounds();
   level thread remove_buildables();
-  level thread setup_first_room_powerups();
   
   level thread init_violation_monitor();
   level thread init_timers();
   level thread init_endgame_restart();
-  level thread init_powerup_monitor();
 
   if (get_current_map() == "zm_nuked") {
     y = array((1058.2, 387.3, -57), (609.28, 315.9, -53.89), (872.48, 461.88, -56.8), (851.1, 156.6, -51), (808, 140.5, -51), (602.53, 281.09, -55));
@@ -61,7 +60,14 @@ on_player_connected() {
   self thread verify_network_frames();
   self thread give_weapon_on_spawn();
   self thread update_zombie_counter();
+  self thread print_map();
 }
+
+print_map() {
+  map = format_map(get_current_map());
+  self queue_print_client("^7Map: ^1" + map);
+}
+
 
 give_weapon_on_spawn() {
   self endon("disconnect");
@@ -70,8 +76,8 @@ give_weapon_on_spawn() {
 
   for (;;) {
     self waittill_any("played_spawned", "spawned_player");
-
     self give_weapons();
+    wait 1;
   }
 }
 
