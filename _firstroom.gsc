@@ -9,6 +9,11 @@ main() {
   safe_replacefunc("maps\mp\animscripts\zm_utility", "wait_network_frame", ::wait_network_frame_override);
   safe_replacefunc("maps\mp\zombies\_zm_utility", "wait_network_frame", ::wait_network_frame_override);
 
+  safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "is_pers_system_active", ::is_pers_active);
+  safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "is_pers_system_disabled", ::is_pers_disabled);
+  safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "pers_upgrade_init", ::blank);
+  safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades_system", "pers_upgrades_monitor", ::blank);
+
   if (get_current_map() == "zm_tomb")
     replacefunc(maps\mp\zombies\_zm_weapons::get_pack_a_punch_weapon_options, ::get_pack_a_punch_weapon_options_override);
 
@@ -20,6 +25,8 @@ init() {
   level thread remove_all_door_buys();
   level thread remove_mystery_box();
   level thread print_checksums();
+  level thread track_zombie_counter_rounds();
+  level thread remove_buildables();
   
   level thread init_violation_monitor();
   level thread init_timers();
@@ -46,10 +53,13 @@ on_player_connected() {
   // store og username incase server changes
   self.original_name = self.name;
 
+  self create_zombie_counter_hud();
+
   self thread record_fill_bank();
   self thread mule_kick_weapon_hud();
   self thread verify_network_frames();
   self thread give_weapon_on_spawn();
+  self thread update_zombie_counter();
 }
 
 give_weapon_on_spawn() {
