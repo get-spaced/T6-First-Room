@@ -829,9 +829,14 @@ fr_restart_remove_hud() {
 }
 
 init_drop_cycle() {
+  if (isdefined(level.pm_drop_cycle_initialized) && level.pm_drop_cycle_initialized)
+    return;
+
+  level.pm_drop_cycle_initialized = true;
   level.drop_cycle_names = array("nuke", "double_points", "insta_kill", "full_ammo");
-  level.drop_cycle_labels = array("Nuke", "Double Points", "Insta Kill", "Max Ammo");
+  level.drop_cycle_labels = array("Nuke", "Double Points", "Insta-Kill", "Max Ammo");
   level.drop_cycle_seen = [];
+  level.pm_cycle_complete = false;
 
   level thread setup_first_room_powerups();
   level thread drop_cycle_listener();
@@ -840,38 +845,52 @@ init_drop_cycle() {
 drop_cycle_listener() {
   level endon("end_game");
 
+  flag_wait("initial_blackscreen_passed");
+
   for (;;) {
     level waittill("powerup_dropped", powerup);
 
     if (!isdefined(powerup))
       continue;
 
-    if (!isdefined(powerup.powerup_name))
-      wait 0.05;
-
-    if (!isdefined(powerup) || !isdefined(powerup.powerup_name))
+    if (isdefined(powerup.pm_drop_tracked) && powerup.pm_drop_tracked)
       continue;
 
-    name = powerup.powerup_name;
-    index = array_index_of(level.drop_cycle_names, name);
+    powerup.pm_drop_tracked = true;
 
-    if (index < 0 || array_contains(level.drop_cycle_seen, name))
-      continue;
+    dropped = 0;
+    if (isdefined(level.powerup_drop_count))
+      dropped = int(level.powerup_drop_count);
 
-    level.drop_cycle_seen[level.drop_cycle_seen.size] = name;
-
-    if (level.drop_cycle_seen.size >= level.drop_cycle_names.size) {
-      wait 0.05;
-      level.drop_cycle_seen = [];
-
-      players = getplayers();
-      for (i = 0; i < players.size; i++)
-        players[i] queue_print_client("^2Drop cycle reset!");
-    }
+    powerup thread pm_process_drop(dropped);
   }
 }
 
+pm_process_drop(dropped) {
+  level endon("end_game");
+
+  for (i = 0; i < 20; i++) {
+    if (!isdefined(self))
+      return;
+
+    if (isdefined(self.powerup_name))
+      break;
+
+    wait 0.05;
+  }
+
+  if (!isdefined(self) || !isdefined(self.powerup_name))
+    return;
+
+  powerup_name = self.powerup_name;
+  pm_register_cycle_drop(powerup_name);
+  pm_print_drop(powerup_name, dropped);
+}
+
 get_drop_cycle_remaining_text() {
+  if (!isdefined(level.drop_cycle_names) || !isdefined(level.drop_cycle_labels) || !isdefined(level.drop_cycle_seen))
+    return "Unavailable";
+
   text = "";
 
   for (i = 0; i < level.drop_cycle_names.size; i++) {
@@ -887,10 +906,105 @@ get_drop_cycle_remaining_text() {
   return text == "" ? "None" : text;
 }
 
+pm_register_cycle_drop(powerup_name) {
+  if (!isdefined(powerup_name) || !isdefined(level.drop_cycle_names))
+    return;
+
+  if (array_index_of(level.drop_cycle_names, powerup_name) < 0)
+    return;
+
+  if (level.pm_cycle_complete) {
+    level.drop_cycle_seen = [];
+    level.pm_cycle_complete = false;
+
+    foreach (player in get_players()) {
+      if (!isdefined(player) || !isplayer(player))
+        continue;
+
+      player queue_print_client("^2Drop cycle reset!");
+    }
+  }
+
+  if (array_contains(level.drop_cycle_seen, powerup_name))
+    return;
+
+  level.drop_cycle_seen[level.drop_cycle_seen.size] = powerup_name;
+
+  if (level.drop_cycle_seen.size >= level.drop_cycle_names.size)
+    level.pm_cycle_complete = true;
+}
+
+pm_print_drop(powerup_name, dropped) {
+  max_drops = 4;
+
+  if (isdefined(level.zombie_vars) && isdefined(level.zombie_vars["zombie_powerup_drop_max_per_round"]))
+    max_drops = int(level.zombie_vars["zombie_powerup_drop_max_per_round"]);
+
+  if (!isdefined(dropped) || dropped < 0)
+    dropped = 0;
+
+  remaining = max_drops - dropped;
+
+  if (remaining < 0)
+    remaining = 0;
+
+  name = pm_powerup_name(powerup_name);
+  cycle = get_drop_cycle_remaining_text();
+
+  foreach (player in get_players()) {
+    if (!isdefined(player) || !isplayer(player))
+      continue;
+
+    player queue_print_client("^2[POWERUP] ^7" + name + " ^8- ^7Drops left: ^1" + remaining + "^7/^1" + max_drops);
+    player queue_print_client("^5[CYCLE] ^7" + cycle);
+  }
+}
+
+pm_powerup_name(powerup_name) {
+  switch (powerup_name) {
+    case "nuke":
+      return "Nuke";
+
+    case "insta_kill":
+      return "Insta-Kill";
+
+    case "full_ammo":
+      return "Max Ammo";
+
+    case "double_points":
+      return "Double Points";
+
+    case "carpenter":
+      return "Carpenter";
+
+    case "fire_sale":
+      return "Fire Sale";
+
+    case "bonfire_sale":
+      return "Bonfire Sale";
+
+    case "minigun":
+      return "Death Machine";
+
+    case "free_perk":
+      return "Free Perk";
+
+    case "zombie_blood":
+      return "Zombie Blood";
+
+    case "bonus_points_team":
+    case "bonus_points_player":
+      return "Bonus Points";
+
+    default:
+      return powerup_name;
+  }
+}
+
 setup_first_room_powerups() {
   level endon("end_game");
 
-  while (!isdefined(level.zombie_powerup_array) || !isdefined(level.zombie_powerups))
+  while (!isdefined(level.zombie_powerup_array) || !isdefined(level.zombie_powerups) || !isdefined(level.zombie_powerups["nuke"]))
     wait 0.05;
 
   wait 0.05;
@@ -906,7 +1020,6 @@ remove_first_room_powerups() {
   arrayremovevalue(level.zombie_powerup_array, "firesale");
   arrayremovevalue(level.zombie_powerup_array, "fire_sale");
 }
-
 
 get_counter_font_scale() {
   scale = getdvarfloat("counter_font_scale");
@@ -1413,4 +1526,202 @@ array_index_of(values, value) {
   }
 
   return -1;
+}
+
+set_round() {
+  level.round_number = 10;
+  level.zombie_vars["zombie_spawn_delay"] = 1.2605;
+  level.zombie_move_speed = 105;
+  level.first_round = false;
+}
+
+round_think_override( restart ) {
+  flag_wait("initial_players_connected");
+
+  set_round();
+
+  wait 16;
+
+  level.game_is_passed_init = 1;
+  level.can_use_voting = 1;
+
+  if ( !isdefined( restart ) )
+    restart = 0;
+
+  level endon( "end_round_think" );
+
+  if ( !( isdefined( restart ) && restart ) )
+  {
+    // printf("*4 >> not restarting");
+
+    if ( isdefined( level.initial_round_wait_func ) )
+    {
+      // printf("*5 >> calling initial_round_wait_func");
+      [[ level.initial_round_wait_func ]]();
+    }
+
+    if ( !( isdefined( level.host_ended_game ) && level.host_ended_game ) )
+    {
+      players = get_players();
+      // printf("*6 >> got players count: " + players.size);
+
+      foreach ( player in players )
+      {
+        if ( !( isdefined( player.hostmigrationcontrolsfrozen ) && player.hostmigrationcontrolsfrozen ) )
+        {
+          player freezecontrols( 0 );
+          // printf("*7 >> unfroze controls for player");
+        }
+
+        player maps\mp\zombies\_zm_stats::set_global_stat( "rounds", level.round_number );
+      }
+    }
+  }
+
+  setroundsplayed( level.round_number );
+  // printf("*8 >> rounds played set");
+
+  for ( ;; )
+  {
+    // printf("*9 >> start of infinite round loop");
+
+    maxreward = 50 * level.round_number;
+
+    if ( maxreward > 500 )
+      maxreward = 500;
+
+    level.zombie_vars["rebuild_barrier_cap_per_round"] = maxreward;
+    level.pro_tips_start_time = gettime();
+    level.zombie_last_run_time = gettime();
+    // printf("*10 >> maxreward and timers set");
+
+    if ( isdefined( level.zombie_round_change_custom ) )
+    {
+      // printf("*11 >> calling custom zombie_round_change");
+      [[ level.zombie_round_change_custom ]]();
+    }
+    else
+    {
+      // printf("*12 >> default round start actions");
+      level thread maps\mp\zombies\_zm_audio::change_zombie_music( "round_start" );
+      round_one_up();
+    }
+
+    maps\mp\zombies\_zm_powerups::powerup_round_start();
+    players = get_players();
+    array_thread( players, maps\mp\zombies\_zm_blockers::rebuild_barrier_reward_reset );
+    // printf("*13 >> powerups and barrier reset done");
+
+    if ( !( isdefined( level.headshots_only ) && level.headshots_only ) && !restart )
+    {
+      // printf("*14 >> awarding grenades for survivors");
+      level thread award_grenades_for_survivors_override();
+    }
+
+    //bbprintf( "zombie_rounds", "round %d player_count %d", level.round_number, players.size );
+    level.round_start_time = gettime();
+    // printf("*15 >> round_start_time set");
+
+    while ( level.zombie_spawn_locations.size <= 0 )
+      wait 0.1;
+
+    level thread [[ level.round_spawn_func ]]();
+    level notify( "start_of_round" );
+    recordzombieroundstart();
+    players = getplayers();
+    // printf("*16 >> round spawn started");
+
+    for ( index = 0; index < players.size; index++ )
+    {
+      zonename = players[index] get_current_zone();
+      if ( isdefined( zonename ) )
+        players[index] recordzombiezone( "startingZone", zonename );
+    }
+    // printf("*17 >> player starting zones recorded");
+
+    if ( isdefined( level.round_start_custom_func ) )
+    {
+      // printf("*18 >> calling round_start_custom_func");
+      [[ level.round_start_custom_func ]]();
+    }
+
+    [[ level.round_wait_func ]]();
+    level.first_round = 0;
+    level notify( "end_of_round" );
+    level thread maps\mp\zombies\_zm_audio::change_zombie_music( "round_end" );
+    uploadstats();
+    // printf("*19 >> round end functions done");
+
+    if ( isdefined( level.round_end_custom_logic ) )
+    {
+      // printf("*20 >> calling round_end_custom_logic");
+      [[ level.round_end_custom_logic ]]();
+    }
+
+    players = get_players();
+
+    if ( isdefined( level.no_end_game_check ) && level.no_end_game_check )
+    {
+      // printf("*21 >> no_end_game_check active");
+      level thread last_stand_revive();
+      level thread spectators_respawn();
+    }
+    else if ( 1 != players.size )
+    {
+      // printf("*22 >> respawning spectators");
+      level thread spectators_respawn();
+    }
+
+    players = get_players();
+    array_thread( players, maps\mp\zombies\_zm_pers_upgrades_system::round_end );
+    timer = level.zombie_vars["zombie_spawn_delay"];
+
+    if ( timer > 0.08 )
+      level.zombie_vars["zombie_spawn_delay"] = timer * 0.95;
+    else if ( timer < 0.08 )
+      level.zombie_vars["zombie_spawn_delay"] = 0.08;
+
+    level.round_number++;
+    if ( 255 < level.round_number )
+      level.round_number = 255;
+
+    setroundsplayed( level.round_number );
+    matchutctime = getutc();
+    players = get_players();
+    // printf("*23 >> round number incremented and stats prepared");
+
+    foreach ( player in players )
+    {
+      if ( level.curr_gametype_affects_rank && level.round_number > 3 + level.start_round )
+        player maps\mp\zombies\_zm_stats::add_client_stat( "weighted_rounds_played", level.round_number );
+
+      player maps\mp\zombies\_zm_stats::set_global_stat( "rounds", level.round_number );
+      player maps\mp\zombies\_zm_stats::update_playing_utc_time( matchutctime );
+    }
+    // printf("*24 >> player stats updated");
+
+    check_quickrevive_for_hotjoin();
+    level round_over();
+    level notify( "between_round_over" );
+    restart = 0;
+    // printf("*25 >> round finished, loop restarting");
+  }
+}
+
+award_grenades_for_survivors_override() {
+  players = get_players();
+
+  for ( i = 0; i < players.size; i++ ) {
+    if ( !players[i].is_zombie ) {
+      lethal_grenade = players[i] get_player_lethal_grenade();
+ 
+      if ( !players[i] hasweapon( lethal_grenade ) ) {
+        players[i] giveweapon( lethal_grenade );
+        players[i] setweaponammoclip( lethal_grenade, 4 );
+      }
+
+      players[i] setweaponammoclip( lethal_grenade, 4 );
+      players[i] iprintln("^2+ Grenades");
+    }
+  }
 }

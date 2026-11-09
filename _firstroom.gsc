@@ -9,6 +9,8 @@ main() {
   safe_replacefunc("maps\mp\animscripts\zm_utility", "wait_network_frame", ::wait_network_frame_override);
   safe_replacefunc("maps\mp\zombies\_zm_utility", "wait_network_frame", ::wait_network_frame_override);
 
+  safe_replacefunc("maps/mp/zombies/_zm", "round_think", ::round_think_override);
+
   safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "is_pers_system_active", ::is_pers_active);
   safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "is_pers_system_disabled", ::is_pers_disabled);
   safe_replacefunc("maps/mp/zombies/_zm_pers_upgrades", "pers_upgrade_init", ::blank);
