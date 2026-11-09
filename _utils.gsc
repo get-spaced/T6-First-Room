@@ -406,7 +406,7 @@ set_value_text(value) {
   if (isdefined(self.text) && self.text == text)
     return;
 
-  self settextunlimited(text);
+  self settextunlimitedun(text);
   self.text = text;
 }
 
@@ -444,7 +444,7 @@ vm_start() {
   level.vm_status.alpha = 1;
   level.vm_status.sort = 20;
   level.vm_status.hideWhenInMenu = 0;
-  level.vm_status setText("INTEGRITY MONITOR ACTIVE");
+  level.vm_status set_string_text("INTEGRITY MONITOR ACTIVE");
 
   level thread vm_status_intro();
 
@@ -454,7 +454,7 @@ vm_start() {
   level.vm_alert.alpha = 0;
   level.vm_alert.sort = 20;
   level.vm_alert.hideWhenInMenu = 0;
-  level.vm_alert setText("VIOLATION DETECTED");
+  level.vm_alert set_string_text("VIOLATION DETECTED");
 
   level.vm_reason = createServerFontString("objective", 1.4);
   level.vm_reason setPoint("CENTER", "TOP", 0, 88);
@@ -462,7 +462,7 @@ vm_start() {
   level.vm_reason.alpha = 0;
   level.vm_reason.sort = 20;
   level.vm_reason.hideWhenInMenu = 0;
-  level.vm_reason setText("UNKNOWN VIOLATION");
+  level.vm_reason set_string_text("UNKNOWN VIOLATION");
 
   level.vm_speed = getdvar("g_speed");
   level.vm_gravity = getdvar("g_gravity");
@@ -510,7 +510,7 @@ vm_report(code, message) {
 
   level.vm_status.color = (1, 0.2, 0.2);
   level.vm_status.alpha = 1;
-  level.vm_status setText("RUN INVALIDATED");
+  level.vm_status set_string_text("RUN INVALIDATED");
 
   level notify("vm_next_alert");
   level thread vm_flash(message);
@@ -521,7 +521,7 @@ vm_flash(message) {
   level endon("end_game");
   level endon("vm_next_alert");
 
-  level.vm_reason setText(message);
+  level.vm_reason set_string_text(message);
 
   for (i = 0; i < 3; i++) {
     level.vm_alert.alpha = 1;
@@ -635,10 +635,10 @@ fr_restart_host() {
 
   self fr_restart_create_hud();
 
-  self.fr_restart_header setText("FIRST ROOM  /  HOST CONTROL");
-  self.fr_restart_title setText("RESTART AVAILABLE");
-  self.fr_restart_hint setText("AIM + MELEE");
-  self.fr_restart_footer setText("PRESS BOTH TO RESTART THE GAME");
+  self.fr_restart_header set_string_text("FIRST ROOM  /  HOST CONTROL");
+  self.fr_restart_title set_string_text("RESTART AVAILABLE");
+  self.fr_restart_hint set_string_text("^7[{+speed_throw}] ^3+ ^7[{+melee}]");
+  self.fr_restart_footer set_string_text("PRESS BOTH TO RESTART THE GAME");
 
   self.fr_restart_bg fadeOverTime(0.4);
   self.fr_restart_bg.alpha = 0.85;
@@ -669,10 +669,10 @@ fr_restart_host() {
       self notify("fr_restart_close");
 
       self.fr_restart_title.color = (0.35, 1, 0.6);
-      self.fr_restart_title setText("RESTARTING GAME");
+      self.fr_restart_title set_string_text("RESTARTING GAME");
 
-      self.fr_restart_hint setText("PLEASE WAIT");
-      self.fr_restart_footer setText("PREPARING A NEW RUN");
+      self.fr_restart_hint set_string_text("PLEASE WAIT");
+      self.fr_restart_footer set_string_text("PREPARING A NEW RUN");
 
       self.fr_restart_accent.alpha = 1;
 
