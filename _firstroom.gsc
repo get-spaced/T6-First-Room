@@ -6,8 +6,8 @@
 #include scripts\zm\_utils;
 
 main() {
-  safe_replacefunc("maps\mp\animscripts\zm_utility", "wait_network_frame", ::wait_network_frame_override);
-  safe_replacefunc("maps\mp\zombies\_zm_utility", "wait_network_frame", ::wait_network_frame_override);
+  safe_replacefunc("maps/mp/animscripts/zm_utility", "wait_network_frame", ::wait_network_frame_override);
+  safe_replacefunc("maps/mp/zombies/_zm_utility", "wait_network_frame", ::wait_network_frame_override);
 
   safe_replacefunc("maps/mp/zombies/_zm", "round_think", ::round_think_override);
 
@@ -30,14 +30,14 @@ init() {
   level thread print_checksums();
   level thread track_zombie_counter_rounds();
   level thread remove_buildables();
-  
+
   level thread init_violation_monitor();
   level thread init_timers();
   level thread init_endgame_restart();
 
   if (get_current_map() == "zm_nuked") {
     y = array((1058.2, 387.3, -57), (609.28, 315.9, -53.89), (872.48, 461.88, -56.8), (851.1, 156.6, -51), (808, 140.5, -51), (602.53, 281.09, -55));
-    
+
     foreach (origin in y)
       remove_mannequin(origin);
   }
@@ -85,7 +85,7 @@ give_weapon_on_spawn() {
 
 give_weapons() {
   weapon = get_map_weapon();
-  
+
   self giveweapon(weapon);
   self switchtoweapon(weapon);
 
@@ -153,7 +153,7 @@ is_good_either(player_count, frame_length, solo_framework, coop_framework) {
 wait_network_frame_override() {
   if (level.players.size == 1)
      wait 0.1;
-  
+
   if (numremoteclients()) {
     snapshot_ids = getsnapshotindexarray();
 
@@ -162,7 +162,7 @@ wait_network_frame_override() {
 
     return;
   }
-  
+
   wait 0.1;
 }
 
@@ -286,7 +286,7 @@ remove_mannequin(origin, extra_delay) {
 
   all_mannequins = [];
   destructibles = getentarray("destructible", "targetname");
-    
+
   foreach (destructible in destructibles)
     if (issubstr(destructible.destructibledef, "male"))
       all_mannequins[all_mannequins.size] = destructible;
